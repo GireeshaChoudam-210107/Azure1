@@ -1,0 +1,97 @@
+!pip install openai
+!pip install azure-ai-ml
+!python -m pip install azure-identity
+!pip install "opentelemetry-api<=1.42.1" "opentelemetry-sdk<=1.42.1"
+
+
+
+from openai import AzureOpenAI
+endpoint = "https://project210107-resource.services.ai.azure.com/api/projects/project210107"
+api_key = "B3qNo91bseBXckN0oM8McUvvkEIqZFBTdgRpa6P8HG4K5qHZOIBIJQQJ99CKACNns7RXJ3w3AAAAACOGX2QT"
+deployment_name = "gpt-5-mini"
+
+
+
+from openai import OpenAI
+
+# 1. Azure OpenAI details
+azure_endpoint = "https://project210107-resource.services.ai.azure.com/openai/v1/"
+
+api_key = "B3qNo91bseBXckN0oM8McUvvkEIqZFBTdgRpa6P8HG4K5qHZOIBIJQQJ99CKACNns7RXJ3w3AAAAACOGX2QT"
+
+deployment_name = "gpt-5-mini"
+
+# 2. Create client
+client = OpenAI(
+    base_url=azure_endpoint,
+    api_key=api_key
+)
+
+# 3. Call the model
+response = client.responses.create(
+    model=deployment_name,
+    input="What is the capital of India?"
+)
+
+# 4. Print output
+print(response.output_text)
+
+
+
+response = client.chat.completions.create(
+    model=deployment_name,
+    messages=[
+        {"role": "system", "content": "you are AI assistant which does only key phrase extraction from the user content seperated by comma"},
+        {"role": "user", "content": "India is a beautiful country filled with nature and good culture"}
+        
+    ],
+)
+
+print(response.choices[0].message.content)
+
+
+
+
+
+response = client.chat.completions.create(
+    model=deployment_name,
+   messages=[
+        {"role": "system", "content": "You are a named entity recognition assistant. Extract all person names, organization names, and locations from the user's text, and return them in JSON format with keys 'persons', 'organizations', 'locations'."},
+        {"role": "user", "content": "Satya Nadella, CEO of Microsoft, announced a new partnership with the University of Washington in Seattle."}
+    ]
+) 
+
+print(response.choices[0].message.content)
+
+
+
+
+
+response = client.chat.completions.create(
+    model=deployment_name,
+   messages=[
+        {"role": "system", "content": "You are a sentiment analysis assistant."},
+        {"role": "user", "content": "i am some what nervous but i dont know the reason."}
+    ]
+) 
+
+print(response.choices[0].message.content)
+
+
+
+
+
+response = client.chat.completions.create(
+    model=deployment_name,
+   messages=[
+        {"role": "system", "content": "You are a text summarize  assistant."},
+        {"role": "user", "content": "i am some what nervous but i dont know the reason."}
+    ]
+) 
+
+print(response.choices[0].message.content)
+
+
+
+
+
