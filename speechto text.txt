@@ -1,0 +1,105 @@
+import azure.cognitiveservices.speech as speechsdk
+import os
+import base64
+from google.colab import output
+from IPython.display import display, Javascript
+from getpass import getpass
+
+# Get Azure credentials
+endpoint_url = input("Enter Azure Speech Endpoint: ")
+speech_key = getpass("Enter Azure Speech Key: ")
+
+# Set up Speech Configuration
+speech_config = speechsdk.SpeechConfig(
+    subscription=speech_key,
+    endpoint=endpoint_url
+)
+
+speech_config.speech_recognition_language = "en-US"
+
+# Record audio using Google Colab microphone
+display(Javascript("""
+async function recordAudio() {
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    const recorder = new MediaRecorder(stream);
+    const chunks = [];
+
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.start();
+
+    const button = document.createElement('button');
+    button.textContent = 'Stop Recording';
+    document.body.appendChild(button);
+
+    await new Promise(resolve => {
+        button.onclick = () => {
+            recorder.stop();
+            button.remove();
+            resolve();
+        };
+    });
+
+    await new Promise(resolve => recorder.onstop = resolve);
+
+    stream.getTracks().forEach(track => track.stop());
+
+    const blob = new Blob(chunks, {type: recorder.mimeType});
+
+    return await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+    });
+}
+"""))
+
+print("Click the recording button and speak.")
+
+audio_data = output.eval_js("recordAudio()")
+audio_bytes = base64.b64decode(audio_data.split(",")[1])
+
+with open("recorded_audio.webm", "wb") as f:
+    f.write(audio_bytes)
+
+# Convert WebM audio to WAV
+!ffmpeg -y -i recorded_audio.webm -ar 16000 -ac 1 recorded_audio.wav
+
+# Create audio configuration
+audio_config = speechsdk.audio.AudioConfig(
+    filename="recorded_audio.wav"
+)
+
+# Create Speech Recognizer
+speech_recognizer = speechsdk.SpeechRecognizer(
+    speech_config=speech_config,
+    audio_config=audio_config
+)
+
+# Event handlers
+def recognized_handler(evt):
+    print("Recognized:", evt.result.text)
+
+def recognizing_handler(evt):
+    print("Recognizing:", evt.result.text)
+
+# Connect event handlers
+speech_recognizer.recognized.connect(recognized_handler)
+speech_recognizer.recognizing.connect(recognizing_handler)
+
+# Recognize speech
+print("\nProcessing your speech...")
+
+result = speech_recognizer.recognize_once_async().get()
+
+# Display result
+if result.reason == speechsdk.ResultReason.RecognizedSpeech:
+    print("\nFinal Recognized Text:", result.text)
+
+elif result.reason == speechsdk.ResultReason.NoMatch:
+    print("No speech could be recognized.")
+
+elif result.reason == speechsdk.ResultReason.Canceled:
+    print("Recognition canceled.")
+    print(result.cancellation_details.error_details)
+
+print("\nSpeech recognition completed.")
